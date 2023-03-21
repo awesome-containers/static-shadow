@@ -1,0 +1,34 @@
+# https://github.com/awesome-containers/static-bash
+ARG STATIC_BASH_VERSION=5.2.15
+ARG STATIC_BASH_IMAGE=ghcr.io/awesome-containers/static-bash
+
+# https://github.com/awesome-containers/static-shadow
+ARG STATIC_SHADOW_VERSION=4.13
+ARG STATIC_SHADOW_IMAGE=ghcr.io/awesome-containers/static-shadow
+
+# https://github.com/awesome-containers/alpine-build-essential
+ARG BUILD_ESSENTIAL_VERSION=3.17
+ARG BUILD_ESSENTIAL_IMAGE=ghcr.io/awesome-containers/alpine-build-essential
+
+
+FROM $STATIC_BASH_IMAGE:$STATIC_BASH_VERSION-slim AS static-bash
+FROM $STATIC_SHADOW_IMAGE:$STATIC_SHADOW_VERSION AS static-shadow
+FROM $BUILD_ESSENTIAL_IMAGE:$BUILD_ESSENTIAL_VERSION AS build
+
+WORKDIR /src/shadow
+COPY --from=static-shadow /bin/ ./
+
+RUN set -xeu; \
+    rm -f bash sg vigr; \
+    upx --no-progress --no-color ./*; \
+    upx -t --no-progress --no-color ./*; \
+    chown -cR 0:0 ./; \
+    ! ldd useradd && :; \
+    ./useradd --help; \
+    ln -sf newgrp sg; \
+    ln -sf vipw vigr
+
+# slim static shadow image
+FROM static-bash
+COPY --from=static-shadow /etc/ /etc/
+COPY --from=build /src/shadow/ /bin/
